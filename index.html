@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Controle de Pagamentos</title>
+
+
+  <!-- Chart.js + plugin para labels na pizza -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="/app.js"></script>
+</head>
+<body class="dark-theme">
+  <!-- Botão tema -->
+  <button id="btnTema" class="theme-toggle-btn" title="Modo escuro (clique para modo claro)">🌙</button>
+
+  <!-- LOGIN -->
+  <div id="loginContainer" class="login-container">
+    <div class="login-card">
+      <h2>Entrar</h2>
+      <p class="login-sub">
+        Use seu e-mail e uma senha. Na primeira vez, o usuário é criado automaticamente.
+      </p>
+      <label for="loginEmail">E-mail</label>
+      <input type="email" id="loginEmail" placeholder="seuemail@exemplo.com" />
+      <label for="loginSenha">Senha</label>
+      <input type="password" id="loginSenha" placeholder="Senha" />
+      <button id="btnLogin">Entrar</button>
+      <div id="loginErro" class="login-erro"></div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="appContainer" style="display:none;">
+    <h1>Controle de Pagamentos</h1>
+    <div class="subtitulo">
+      Histórico 60 meses • Fixo / Variável • Pagamento parcial (por banco) • Saldos por banco • Categorias • Gráficos • Importação/Exportação
+    </div>
+
+    <!-- Seleção de mês / ano -->
+    <div class="top-bar">
+      <div>
+        <label for="selectAno">Ano:</label>
+        <select id="selectAno"></select>
+      </div>
+      <div>
+        <label for="selectMes">Mês:</label>
+        <select id="selectMes"></select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btnTrocarMes">Carregar mês</button>
+      </div>
+      <div>
+        <label for="filtroStatus">Filtrar status:</label>
+        <select id="filtroStatus">
+          <option value="todos">Todos</option>
+          <option value="abertos">Somente em aberto</option>
+          <option value="pagos">Somente pagos</option>
+          <option value="vencidos">Somente vencidos</option>
+        </select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btnAdicionarConta">Adicionar conta</button>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btnProximoMes">Gerar próximo mês</button>
+      </div>
+    </div>
+
+    <!-- Ordenação -->
+    <div class="ordenacao-container">
+      <span><strong>Ordenar por:</strong></span>
+      <select id="ordenarPor">
+        <option value="nenhum">Nenhum</option>
+        <option value="vencimento">Data de vencimento</option>
+        <option value="categoria">Categoria</option>
+        <option value="conta">Conta</option>
+        <option value="banco">Banco</option>
+        <option value="valor">Valor</option>
+      </select>
+      <select id="ordenarDirecao">
+        <option value="asc">Ascendente</option>
+        <option value="desc">Descendente</option>
+      </select>
+      <button id="btnAplicarOrdenacao">Aplicar ordenação</button>
+    </div>
+
+    <!-- Filtros adicionais -->
+    <div class="ordenacao-container">
+      <span><strong>Filtros adicionais:</strong></span>
+      <span>Banco:</span>
+      <select id="filtroBanco"></select>
+      <span>Categoria:</span>
+      <select id="filtroCategoria"></select>
+      <span>Buscar:</span>
+      <input type="text" id="filtroBusca" placeholder="Conta / banco / categoria..." />
+    </div>
+
+    <!-- Bancos -->
+    <div class="bancos-container">
+      <span><strong>Bancos cadastrados:</strong></span>
+      <select id="selectBancoModelo"></select>
+      <input type="text" id="novoBanco" placeholder="Novo banco" />
+      <button id="btnAdicionarBanco">+</button>
+      <button id="btnRemoverBanco">Remover selecionado</button>
+    </div>
+
+    <!-- Categorias -->
+    <div class="categorias-container">
+      <span><strong>Categorias cadastradas:</strong></span>
+      <select id="selectCategoriaModelo"></select>
+      <input type="text" id="novaCategoria" placeholder="Nova categoria" />
+      <button id="btnAdicionarCategoria">+</button>
+      <button id="btnRemoverCategoria">Remover selecionado</button>
+    </div>
+
+    <!-- Importação / Exportação -->
+    <div class="import-container">
+      <span><strong>Importar lançamentos (CSV ou JSON) para o mês atual:</strong></span>
+      <input type="file" id="arquivoImportacao" />
+      <select id="modoImportacao">
+        <option value="adicionar">Adicionar ao mês</option>
+        <option value="substituir">Substituir mês atual</option>
+      </select>
+      <button id="btnImportar">Importar</button>
+      <span style="margin-left:10px;"><strong>Exportar mês atual:</strong></span>
+      <button id="btnExportarCSV">CSV</button>
+      <button id="btnExportarJSON">JSON</button>
+    </div>
+
+    <!-- Resumo geral -->
+    <div class="resumo">
+      <div class="card">
+        <strong>Total do mês</strong><br />
+        <span id="totalMes">R$ 0,00</span>
+      </div>
+      <div class="card">
+        <strong>Já pago</strong><br />
+        <span id="totalPago">R$ 0,00</span>
+      </div>
+      <div class="card">
+        <strong>Em aberto</strong><br />
+        <span id="totalAberto">R$ 0,00</span>
+      </div>
+      <div class="card">
+        <strong>Saldo total dos bancos</strong><br />
+        <span id="saldoTotalBancos">R$ 0,00</span>
+      </div>
+    </div>
+
+    <!-- Tabela de contas -->
+    <table>
+      <thead>
+        <tr>
+          <th>Conta</th>
+          <th>Categoria</th>
+          <th>Tipo</th>
+          <th>Vencimento</th>
+          <th>Valor (R$)</th>
+          <th>Banco</th>
+          <th>Status</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaPagamentos"></tbody>
+    </table>
+
+    <!-- Top 5 contas mais caras -->
+    <h3>Top 5 contas mais caras do mês atual (somando nomes iguais)</h3>
+    <table class="top5-table">
+      <thead>
+        <tr>
+          <th>Conta</th>
+          <th>Categoria</th>
+          <th>Banco</th>
+          <th>Valor total (R$)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaTopContas"></tbody>
+    </table>
+
+    <!-- Resumo por banco -->
+    <h3>Resumo por banco (mês atual)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Banco</th>
+          <th>Saldo inicial (R$)</th>
+          <th>Total pago (R$)</th>
+          <th>Em aberto (R$)</th>
+          <th>Saldo final (R$)</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaResumoBancos"></tbody>
+    </table>
+
+    <!-- Resumo por categoria -->
+    <h3>Resumo por categoria (mês atual)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Categoria</th>
+          <th>Total (R$)</th>
+          <th>Pago (R$)</th>
+          <th>Em aberto (R$)</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaResumoCategorias"></tbody>
+    </table>
+
+    <!-- Gráficos do mês -->
+    <div class="graficos-container">
+      <div class="grafico-card">
+        <h3>Gastos pagos por banco</h3>
+        <canvas id="graficoPorBanco"></canvas>
+      </div>
+      <div class="grafico-card">
+        <h3>Gastos por categoria (total)</h3>
+        <canvas id="graficoPorCategoria"></canvas>
+      </div>
+    </div>
+
+    <!-- Visão de período -->
+    <h3>Visão de período (vários meses)</h3>
+    <div class="ordenacao-container">
+      <span><strong>Período:</strong></span>
+      <select id="selectPeriodoMeses">
+        <option value="3">Últimos 3 meses</option>
+        <option value="6">Últimos 6 meses</option>
+        <option value="12">Últimos 12 meses</option>
+      </select>
+      <button id="btnAtualizarPeriodo">Atualizar</button>
+    </div>
+
+    <div class="graficos-container">
+      <div class="grafico-card">
+        <h3>Evolução dos gastos pagos por mês</h3>
+        <canvas id="graficoPeriodoMeses"></canvas>
+      </div>
+      <div class="grafico-card">
+        <h3>Top categorias no período</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Total pago (R$)</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaTopCategoriasPeriodo"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
