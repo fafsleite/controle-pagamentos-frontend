@@ -1,0 +1,32 @@
+Conta;Categoria;Tipo;Vencimento;Valor;Banco;Pago
+Mega da Virada 2026;Diversos;variavel;2025-12-10;2.000,00;C6 Bank;Sim
+Mega da Virada 2026;Diversos;variavel;2025-12-10;1.396,00;Nubank;Sim
+Dare (Gisleine);Imposto;variavel;2025-12-10;531,71;Itaú;Sim
+Dare (Flávio);Imposto;variavel;2025-12-10;531,72;Itaú;Sim
+Dare (Alex);Imposto;variavel;2025-12-10;531,71;Itaú;Sim
+Bolão Mega;Diversos;variavel;2025-12-04;130,62;Nubank;Sim
+PIC 190 (19/60);Capitalização;fixo;2025-12-20;206,15;15;Não
+Simples;Imposto;fixo;2025-12-20;80,90;90;Não
+Água;Conta básica;fixo;2025-12-20;76,30;30;Não
+Itaucard Black;Cartão de crédito;variavel;2025-12-21;2.638,79;79;Não
+Luz;Conta básica;fixo;2025-12-24;127,69;69;Não
+Seguro de Vida;Seguros;fixo;2025-12-05;550,18;Caixa;Sim
+Nubank;Cartão de crédito;variavel;2025-12-05;456,77;Nubank;Sim
+Magalu;Cartão de crédito;variavel;2025-12-09;4.641,98;C6 Bank;Sim
+Condomínio;Conta básica;fixo;2025-12-10;653,99;Nubank;Sim
+Luz (Mãe);Conta básica;fixo;2025-12-10;39,06;Nubank;Sim
+Funerária (5);Imposto;variavel;2025-12-10;213,79;Nubank;Sim
+PIC 40 (51/60);Capitalização;fixo;2025-12-11;43,14;Itaú;Sim
+Apartamento;Conta básica;fixo;2025-12-12;443,76;Itaú;Sim
+C6 Bank;Cartão de crédito;variavel;2025-12-15;3.145,03;C6 Bank;Sim
+Claro;Conta básica;fixo;2025-12-15;151,98;C6 Bank;Sim
+Proteção Familiar;Capitalização;fixo;2025-12-15;31,91;91;Não
+Prêmio VGBL;Capitalização;fixo;2025-12-15;61,85;85;Não
+Condomínio (Mãe);Conta básica;fixo;2025-12-15;433,00;C6 Bank;Sim
+
+#SALDOS
+Banco;SaldoInicial
+C6 Bank;10.395,17
+Caixa;552,79
+Itaú;2.805,18
+Nubank;6.120,41
