@@ -7,7 +7,8 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const DB_FILE = path.join(__dirname, "db.json");
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_FILE = path.join(DATA_DIR, "db.json");
 
 // Estrutura na memória
 let db = {
@@ -58,7 +59,13 @@ function findUserById(id) {
 
 // ---------- Middlewares ----------
 
-app.use(cors());
+const allowed = (process.env.FRONTEND_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
+app.use(cors({
+  origin: allowed.length ? allowed : true,
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
