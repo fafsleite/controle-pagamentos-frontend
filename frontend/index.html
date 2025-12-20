@@ -761,10 +761,12 @@
     }
 
     // Desenha "nome + logo" no próprio eixo X (remove legenda duplicada)
+    // Desenha apenas o LOGO abaixo do eixo X (o nome do banco fica no tick padrão)
     const bankAxisLabelPlugin = {
         id: "bankAxisLabelPlugin",
         afterDraw(chart, args, opts) {
             if(!chart || !chart.scales || !chart.scales.x) return;
+            if(chart?.canvas?.id !== "graficoPorBanco") return;
             if(!opts || opts.enabled === false) return;
 
             const labels = (chart.data && chart.data.labels) ? chart.data.labels : [];
@@ -772,60 +774,40 @@
 
             const ctx = chart.ctx;
             const xScale = chart.scales.x;
-            const area = chart.chartArea;
 
-            const badgePadX = 8;
-            const badgeH = 20;
-            const badgeR = 10;
             const logoSize = 18;
-            const gap = 6;
-
-            const baseY = area.bottom + 8;            // início da área de rótulos
-            const logoY = baseY + badgeH + gap;       // logo abaixo do badge
-
-            function roundRect(x, y, w, h, r) {
-                const rr = Math.min(r, w/2, h/2);
-                ctx.beginPath();
-                ctx.moveTo(x+rr, y);
-                ctx.arcTo(x+w, y, x+w, y+h, rr);
-                ctx.arcTo(x+w, y+h, x, y+h, rr);
-                ctx.arcTo(x, y+h, x, y, rr);
-                ctx.arcTo(x, y, x+w, y, rr);
-                ctx.closePath();
-            }
+            const y = (typeof xScale.bottom === "number" ? xScale.bottom : chart.chartArea.bottom) + 8;
 
             ctx.save();
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-
             labels.forEach((lb, i) => {
                 const x = xScale.getPixelForTick(i);
-                const st = bankStyle(lb);
-
-                // Badge com nome
-                const txt = String(lb);
-                const w = Math.max(52, ctx.measureText(txt).width + badgePadX*2);
-                const x0 = x - w/2;
-                const y0 = baseY;
-
-                ctx.fillStyle = st.bar;
-                roundRect(x0, y0, w, badgeH, badgeR);
-                ctx.fill();
-
-                ctx.fillStyle = st.text;
-                ctx.fillText(txt, x, y0 + badgeH/2);
-
-                // Logo abaixo
                 const img = getBankLogoImg(lb);
                 if(img && img.complete && img.naturalWidth > 0) {
-                    ctx.drawImage(img, x - logoSize/2, logoY, logoSize, logoSize);
+                    ctx.drawImage(img, x - logoSize/2, y, logoSize, logoSize);
                 }
             });
-
             ctx.restore();
         }
-    };
+    }
+
+    // Garante que plugins do Chart sejam registrados (sem quebrar se CDN falhar)
+    let __chartPluginsRegistered = false;
+    function ensureChartPlugins() {
+        if(__chartPluginsRegistered) return;
+        try {
+            if(window.Chart && window.ChartDataLabels && window.Chart.register) {
+                window.Chart.register(window.ChartDataLabels);
+            }
+        } catch(e) {}
+        try {
+            if(window.Chart && window.Chart.register) {
+                window.Chart.register(bankAxisLabelPlugin);
+            }
+        } catch(e) {}
+        __chartPluginsRegistered = true;
+    }
+
+;
 
 
 
@@ -878,8 +860,14 @@
         if(!wrap) {
             wrap = document.createElement("div");
             wrap.id = "resumoPorCategoriaWrap";
-            wrap.style.marginBottom = "10px";
-            card.insertBefore(wrap, canvas);
+        }
+        // Queremos o gráfico em cima e a tabela embaixo
+        wrap.style.marginTop = "12px";
+        wrap.style.marginBottom = "0px";
+
+        // Garante que o wrap fique SEMPRE logo após o canvas
+        if(canvas.nextElementSibling !== wrap) {
+            canvas.insertAdjacentElement("afterend", wrap);
         }
 
         const cats = Object.keys(resumo || {})
@@ -1441,6 +1429,8 @@
     }
 
     async function atualizarGraficos() {
+        ensureChartPlugins();
+        if(!window.Chart) return;
         if(!anoAtual || !mesAtual) return;
         const l = (dadosPorMes[keyMes(anoAtual, mesAtual)]||{}).contas || [];
         const txtColor = temaAtual==="light" ? "#334155" : "#e5e7eb";
@@ -1473,7 +1463,7 @@
                 maintainAspectRatio: true,
                 aspectRatio: 1.5,
                 animation: { duration: 0 },
-                layout: { padding: { bottom: 70 } },
+                layout: { padding: { bottom: 52 } },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -1498,21 +1488,21 @@
                 },
                 scales: {
                     x: {
-                        ticks: { display: false },
+                        ticks: { display: true, color: txtColor, font: { weight: "600" } },
                         grid: { display: false }
                     },
                     y: {
                         beginAtZero: true,
                         ticks: {
                             color: txtColor,
-                            stepSize: 500,
+                            stepSize: 1000,
                             callback: (v) => Number(v||0).toLocaleString("pt-BR")
                         },
                         grid: { color: (temaAtual==="light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)") }
                     }
                 }
             },
-            plugins: [ChartDataLabels, bankAxisLabelPlugin]
+            plugins: [window.ChartDataLabels, bankAxisLabelPlugin].filter(Boolean)
         });
         window.graficoBanco = graficoBanco;
 
@@ -1568,7 +1558,7 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
                     }
                 }
             },
-            plugins: [ChartDataLabels]
+            plugins: [window.ChartDataLabels].filter(Boolean)
         });
 // 3. Pago x Aberto (com detalhamento: Vencidos x A vencer)
         const hoje = hojeZero();
@@ -1643,7 +1633,7 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
                 },
                 cutout: "55%"
             },
-            plugins: [ChartDataLabels]
+            plugins: [window.ChartDataLabels].filter(Boolean)
         });
 
         renderLegendaStatusDonut();
@@ -1683,7 +1673,7 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
                         y: { ticks:{ color: txtColor } }
                     }
                 },
-                plugins: [ChartDataLabels]
+                plugins: [window.ChartDataLabels].filter(Boolean)
             });
         }
 
@@ -1708,8 +1698,8 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
         const pagoAc = [];
         let accV = 0, accP = 0;
         for(let i=0;i<lastDay;i++){
-            accV += previstoDia[i];
-            accP += pagoDia[i];
+            accV = Math.round((accV + (previstoDia[i]||0)) * 100) / 100;
+            accP = Math.round((accP + (pagoDia[i]||0)) * 100) / 100;
             previstoAc.push(accV);
             pagoAc.push(accP);
         }
@@ -1728,11 +1718,26 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
             options: {
                 responsive:true,
                 plugins:{
-                    legend:{ position:"bottom", labels:{ color: txtColor } }
+                    legend:{ position:"bottom", labels:{ color: txtColor } },
+                    tooltip:{
+                        callbacks:{
+                            label:(ctx)=>{
+                                const y = (ctx && ctx.parsed && typeof ctx.parsed.y !== "undefined") ? ctx.parsed.y : (ctx.parsed||0);
+                                return `${ctx.dataset.label}: R$ ${formatarValor(y)}`;
+                            }
+                        }
+                    },
+                    // evita poluição visual no gráfico de linhas
+                    datalabels:{ display:false }
                 },
                 scales:{
                     x:{ ticks:{ color: txtColor } },
-                    y:{ ticks:{ color: txtColor } }
+                    y:{
+                        ticks:{
+                            color: txtColor,
+                            callback:(v)=> Number(v||0).toLocaleString("pt-BR")
+                        }
+                    }
                 }
             }
         });
@@ -1761,7 +1766,8 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
         document.getElementById("btnTema").onclick = toggleTema;
         document.getElementById("selectPaletaTema").onchange = (e) => alterarPaleta(e.target.value);
         document.getElementById("btnTrocarMes").onclick = carregarDados;
-        document.getElementById("btnAdicionarConta").onclick = addConta;
+        document.getElementById("btnAdicionarConta").type = "button";
+        document.getElementById("btnAdicionarConta").onclick = (ev) => addConta(ev);
         document.getElementById("btnProximoMes").onclick = gerarProximoMes;
         const sp2 = document.getElementById("selectPeriodoMeses"); if(sp2) sp2.onchange = atualizarGraficos;
         document.getElementById("btnImportar").onclick = importarArquivo;
@@ -1823,14 +1829,43 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
         saveAndRefresh();
     }
 
-    function addConta() {
+    function addConta(ev) {
+        // Evita qualquer comportamento padrão (submit/navegação) e NÃO deixa a tela "pular"
+        if(ev && typeof ev.preventDefault === "function") ev.preventDefault();
+        if(ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+
+        const y = window.scrollY || 0;
+        const x = window.scrollX || 0;
+        const active = document.activeElement;
+
         const k = keyMes(anoAtual, mesAtual);
+        if(!dadosPorMes[k]) dadosPorMes[k] = { contas:[], saldos:{} };
+
         dadosPorMes[k].contas.unshift({
             conta:"", valor:0, banco:"", categoria:categorias[0]||"",
             vencimento: gerarDataVencimento(anoAtual, mesAtual, new Date().getDate()),
             pago:false, tipo:"variavel"
         });
+
         saveAndRefresh();
+
+        // Restaura a rolagem depois que DOM + gráficos renderizarem
+        const restore = () => {
+            try { window.scrollTo(x, y); } catch(e) {}
+            try {
+                if(active && typeof active.focus === "function") {
+                    // evita scroll ao focar
+                    active.focus({ preventScroll: true });
+                } else {
+                    const btn = document.getElementById("btnAdicionarConta");
+                    if(btn && typeof btn.focus === "function") btn.focus({ preventScroll: true });
+                }
+            } catch(e) {}
+        };
+
+        requestAnimationFrame(restore);
+        setTimeout(restore, 0);
+        setTimeout(restore, 80);
     }
 
     function gerarProximoMes() {

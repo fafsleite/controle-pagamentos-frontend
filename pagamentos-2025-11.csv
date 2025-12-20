@@ -1,0 +1,30 @@
+Conta;Categoria;Tipo;Vencimento;Valor;Banco;Pago
+PIC 190 (18/60);Capitalização;fixo;2025-11-20;206,15;Itaú;Sim
+Simples;Imposto;fixo;2025-11-20;80,90;Nubank;Sim
+Água;Conta básica;fixo;2025-11-20;76,30;Nubank;Sim
+Boleto Extra (cond.);Conta básica;variavel;2025-11-20;174,75;Nubank;Sim
+Itaucard Black;Cartão de crédito;variavel;2025-11-21;1.961,79;Itaú;Sim
+Luz;Conta básica;fixo;2025-11-24;121,34;Nubank;Sim
+Seguro de Vida;Seguros;fixo;2025-11-05;550,18;Caixa;Sim
+Nubank;Cartão de crédito;variavel;2025-11-05;545,75;Nubank;Sim
+Magalu;Cartão de crédito;variavel;2025-11-09;3.000,00;Itaú;Sim
+Magalu;Cartão de crédito;variavel;2025-11-09;1.418,66;C6 Bank;Sim
+Condomínio;Conta básica;fixo;2025-11-10;479,24;Nubank;Sim
+Luz (Mãe);Conta básica;fixo;2025-11-10;27,56;Nubank;Sim
+Funerária (4);Imposto;variavel;2025-11-10;213,79;Nubank;Sim
+Cabeleireiro;Diversos;variavel;2025-11-10;30,00;Nubank;Sim
+PIC 40 (50/60);Capitalização;fixo;2025-11-11;43,14;Itaú;Sim
+Apartamento;Conta básica;fixo;2025-11-12;441,74;Nubank;Sim
+C6 Bank;Cartão de crédito;variavel;2025-11-15;3.166,18;C6 Bank;Sim
+Claro;Conta básica;fixo;2025-11-15;151,98;Nubank;Sim
+Proteção Familiar;Capitalização;fixo;2025-11-15;31,91;Itaú;Sim
+Prêmio VGBL;Capitalização;fixo;2025-11-15;61,85;Itaú;Sim
+Conta Gás (Mãe);Conta básica;fixo;2025-11-15;11,92;Nubank;Sim
+Condomínio (Mãe);Conta básica;fixo;2025-11-15;433,00;Nubank;Sim
+
+#SALDOS
+Banco;SaldoInicial
+C6 Bank;5.149,02
+Caixa;1.102,97
+Itaú;5.577,67
+Nubank;4.564,94
