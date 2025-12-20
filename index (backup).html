@@ -221,10 +221,6 @@
     }
     tbody tr:hover { background-color: rgba(255,255,255,0.03); }
 
-    /* Destaque rápido para a linha recém-criada */
-    tr.highlight-new { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: 0 0 0 4px rgba(255,255,255,0.10); }
-
-
     .status-pago { color: var(--status-pago); font-weight: 700; }
     .status-vencido { color: var(--status-vencido); font-weight: 700; }
     .status-perto { color: var(--status-perto); font-weight: 700; }
@@ -616,8 +612,6 @@
     let paletaAtual      = "azul";
 
     let graficoBanco = null, graficoCategoria = null, graficoPeriodo = null, graficoStatus = null, graficoTop10 = null;
-    let pendingFocusCid = null; // usado para focar na nova conta criada
-
     const nomesMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
     // Ordem Preferencial
@@ -1066,29 +1060,6 @@
         salvarMes();
         renderizarTabela(); 
     }
-    // Foca e leva a tela até a última "Nova Conta" criada (sem mexer na ordenação)
-    function focarNovaContaSeNecessario() {
-        if(!pendingFocusCid) return;
-        const cid = pendingFocusCid;
-
-        // tenta achar a linha (se filtros ocultarem, pode não existir)
-        const row = document.querySelector(`#tabelaPagamentos tr[data-cid="${cid}"]`);
-        if(!row) return;
-
-        // rola até a linha e foca no campo "Conta"
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        const inp = row.querySelector('td:nth-child(1) input');
-        if(inp) {
-            try { inp.focus({ preventScroll: true }); } catch(e) { inp.focus(); }
-        }
-
-        // destaque rápido (opcional, só visual)
-        row.classList.add("highlight-new");
-        setTimeout(() => row.classList.remove("highlight-new"), 1200);
-
-        pendingFocusCid = null;
-    }
-
 
     // ========= RENDERIZAÇÃO =========
     function renderizarTabela() {
@@ -1166,7 +1137,6 @@
 
         filtrados.forEach(p => {
             const tr = document.createElement("tr");
-            if(p.__cid) tr.dataset.cid = String(p.__cid);
 
             // Conta
             let td = document.createElement("td");
@@ -1293,10 +1263,7 @@
         atualizarResumo();
         renderizarTop5();
         renderizarResumoBancos();
-        atualizarGraficos();
-
-        // se acabou de criar uma nova conta, leva o foco para ela
-        focarNovaContaSeNecessario();
+        atualizarGraficos(); 
     }
 
     // ========= UI UTILS =========
@@ -1383,7 +1350,7 @@
             const tdInp = document.createElement("td");
             const inp = document.createElement("input");
             inp.className="inp-table"; 
-            inp.style.width="110px";
+            inp.style.width="80px";
             // Valor padrão 0 se não existir
             inp.value = formatarValor(s[b]||0);
             
@@ -1862,31 +1829,44 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
         saveAndRefresh();
     }
 
-    
     function addConta(ev) {
+        // Evita qualquer comportamento padrão (submit/navegação) e NÃO deixa a tela "pular"
         if(ev && typeof ev.preventDefault === "function") ev.preventDefault();
+        if(ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+
+        const y = window.scrollY || 0;
+        const x = window.scrollX || 0;
+        const active = document.activeElement;
 
         const k = keyMes(anoAtual, mesAtual);
         if(!dadosPorMes[k]) dadosPorMes[k] = { contas:[], saldos:{} };
 
-        // ID local para conseguir focar a linha certa após renderizar
-        const cid = Date.now().toString(36) + Math.random().toString(16).slice(2);
-        pendingFocusCid = cid;
-
-        dadosPorMes[k].contas.push({
+        dadosPorMes[k].contas.unshift({
             conta:"", valor:0, banco:"", categoria:categorias[0]||"",
             vencimento: gerarDataVencimento(anoAtual, mesAtual, new Date().getDate()),
-            pago:false, tipo:"variavel",
-            __cid: cid
+            pago:false, tipo:"variavel"
         });
 
-        // Mantém sua ordenação por vencimento; apenas foca na linha criada
         saveAndRefresh();
 
-        // espera o DOM pintar e então foca
-        requestAnimationFrame(() => requestAnimationFrame(() => focarNovaContaSeNecessario()));
-    }
+        // Restaura a rolagem depois que DOM + gráficos renderizarem
+        const restore = () => {
+            try { window.scrollTo(x, y); } catch(e) {}
+            try {
+                if(active && typeof active.focus === "function") {
+                    // evita scroll ao focar
+                    active.focus({ preventScroll: true });
+                } else {
+                    const btn = document.getElementById("btnAdicionarConta");
+                    if(btn && typeof btn.focus === "function") btn.focus({ preventScroll: true });
+                }
+            } catch(e) {}
+        };
 
+        requestAnimationFrame(restore);
+        setTimeout(restore, 0);
+        setTimeout(restore, 80);
+    }
 
     function gerarProximoMes() {
         if(!confirm("Copiar TODAS as contas para o próximo mês?")) return;

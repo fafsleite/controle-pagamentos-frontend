@@ -52,7 +52,13 @@
     body.light-theme th { color: #f8fafc; }
     body.light-theme tbody tr:hover { background-color: #f1f5f9; }
 
-    * { box-sizing: border-box; }
+    
+    /* Destaque temporário (Nova Conta) */
+    .row-highlight { 
+      outline: 2px solid rgba(129, 140, 248, 0.85);
+      background-color: rgba(99, 102, 241, 0.10);
+    }
+* { box-sizing: border-box; }
 
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -220,10 +226,6 @@
       text-transform: uppercase; font-size: 0.75rem; font-weight: 700;
     }
     tbody tr:hover { background-color: rgba(255,255,255,0.03); }
-
-    /* Destaque rápido para a linha recém-criada */
-    tr.highlight-new { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: 0 0 0 4px rgba(255,255,255,0.10); }
-
 
     .status-pago { color: var(--status-pago); font-weight: 700; }
     .status-vencido { color: var(--status-vencido); font-weight: 700; }
@@ -616,8 +618,6 @@
     let paletaAtual      = "azul";
 
     let graficoBanco = null, graficoCategoria = null, graficoPeriodo = null, graficoStatus = null, graficoTop10 = null;
-    let pendingFocusCid = null; // usado para focar na nova conta criada
-
     const nomesMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
     // Ordem Preferencial
@@ -683,6 +683,14 @@
       if(!s) return false;
       return s === "sim" || s === "s" || s === "1" || s === "true" || s === "pago" || s === "x" || s.includes("sim");
     }
+
+
+    function gerarId() {
+      // ID simples para localizar a linha recém-criada (sem depender de libs)
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+    }
+
 
     function splitCSVLine(line, delimiter) {
       const out = [];
@@ -1066,29 +1074,6 @@
         salvarMes();
         renderizarTabela(); 
     }
-    // Foca e leva a tela até a última "Nova Conta" criada (sem mexer na ordenação)
-    function focarNovaContaSeNecessario() {
-        if(!pendingFocusCid) return;
-        const cid = pendingFocusCid;
-
-        // tenta achar a linha (se filtros ocultarem, pode não existir)
-        const row = document.querySelector(`#tabelaPagamentos tr[data-cid="${cid}"]`);
-        if(!row) return;
-
-        // rola até a linha e foca no campo "Conta"
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        const inp = row.querySelector('td:nth-child(1) input');
-        if(inp) {
-            try { inp.focus({ preventScroll: true }); } catch(e) { inp.focus(); }
-        }
-
-        // destaque rápido (opcional, só visual)
-        row.classList.add("highlight-new");
-        setTimeout(() => row.classList.remove("highlight-new"), 1200);
-
-        pendingFocusCid = null;
-    }
-
 
     // ========= RENDERIZAÇÃO =========
     function renderizarTabela() {
@@ -1118,6 +1103,8 @@
         // Ordenação
         const dir = ordenacaoDirecao === "asc" ? 1 : -1;
         const cmpStr = (x,y) => String(x||"").localeCompare(String(y||""), "pt-BR", { sensitivity:"base" });
+
+        if (ordenacaoCampo !== "nenhum") {
 
         filtrados.sort((a,b) => {
             const contaA = a.conta || "";
@@ -1160,13 +1147,14 @@
 
             return cmpStr(a.categoria, b.categoria);
         });
+        }
 
         const tbody = document.getElementById("tabelaPagamentos");
         tbody.innerHTML = "";
 
         filtrados.forEach(p => {
             const tr = document.createElement("tr");
-            if(p.__cid) tr.dataset.cid = String(p.__cid);
+            if (p.id) tr.dataset.pid = p.id;
 
             // Conta
             let td = document.createElement("td");
@@ -1257,7 +1245,7 @@
                         if(Math.abs(num-v)>0.05) { 
                            const resto = v-num;
                            p.valor = num; p.pago = true;
-                           lista.push({ ...p, valor:resto, pago:false });
+                           lista.push({ ...p, id: gerarId(), valor:resto, pago:false });
                         } else {
                            p.pago = true;
                         }
@@ -1270,7 +1258,7 @@
             let btnDup = document.createElement("button");
             btnDup.className = "btn-small"; btnDup.innerText = "Duplicar"; 
             btnDup.style.marginRight="4px";
-            btnDup.onclick = () => { lista.unshift({...p, pago:false}); saveAndRefresh(); };
+            btnDup.onclick = () => { lista.unshift({ ...p, id: gerarId(), pago:false }); saveAndRefresh(); };
             td.appendChild(btnDup);
 
             let btnDel = document.createElement("button");
@@ -1293,10 +1281,7 @@
         atualizarResumo();
         renderizarTop5();
         renderizarResumoBancos();
-        atualizarGraficos();
-
-        // se acabou de criar uma nova conta, leva o foco para ela
-        focarNovaContaSeNecessario();
+        atualizarGraficos(); 
     }
 
     // ========= UI UTILS =========
@@ -1383,7 +1368,7 @@
             const tdInp = document.createElement("td");
             const inp = document.createElement("input");
             inp.className="inp-table"; 
-            inp.style.width="110px";
+            inp.style.width="80px";
             // Valor padrão 0 se não existir
             inp.value = formatarValor(s[b]||0);
             
@@ -1862,33 +1847,50 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
         saveAndRefresh();
     }
 
-    
     function addConta(ev) {
+        // Evita qualquer comportamento padrão e mantém o scroll estável
         if(ev && typeof ev.preventDefault === "function") ev.preventDefault();
+        if(ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+
+        const y = window.scrollY || 0;
 
         const k = keyMes(anoAtual, mesAtual);
         if(!dadosPorMes[k]) dadosPorMes[k] = { contas:[], saldos:{} };
 
-        // ID local para conseguir focar a linha certa após renderizar
-        const cid = Date.now().toString(36) + Math.random().toString(16).slice(2);
-        pendingFocusCid = cid;
+        const novoId = gerarId();
 
-        dadosPorMes[k].contas.push({
+        // Insere no topo
+        dadosPorMes[k].contas.unshift({
+            id: novoId,
             conta:"", valor:0, banco:"", categoria:categorias[0]||"",
             vencimento: gerarDataVencimento(anoAtual, mesAtual, new Date().getDate()),
-            pago:false, tipo:"variavel",
-            __cid: cid
+            pago:false, tipo:"variavel"
         });
 
-        // Mantém sua ordenação por vencimento; apenas foca na linha criada
+        // Mantém a ordem "manual" (inserção) para não jogar a nova conta para o meio do dia
+        const ordenarSel = document.getElementById("ordenarPor");
+        if(ordenarSel) ordenarSel.value = "nenhum";
+        ordenacaoCampo = "nenhum";
+
         saveAndRefresh();
 
-        // espera o DOM pintar e então foca
-        requestAnimationFrame(() => requestAnimationFrame(() => focarNovaContaSeNecessario()));
+        requestAnimationFrame(() => {
+            // Evita o "pulo" para baixo
+            window.scrollTo({ top: y, behavior: "auto" });
+
+            // Destaca e foca a nova linha (sem scroll)
+            const row = document.querySelector(`tr[data-pid="${novoId}"]`);
+            if(row) {
+                row.classList.add("row-highlight");
+                const first = row.querySelector("input, select");
+                if(first && typeof first.focus === "function") first.focus({ preventScroll: true });
+                setTimeout(() => row.classList.remove("row-highlight"), 1200);
+            }
+        });
     }
 
 
-    function gerarProximoMes() {
+function gerarProximoMes() {
         if(!confirm("Copiar TODAS as contas para o próximo mês?")) return;
         let nextM = mesAtual + 1;
         let nextA = anoAtual;
@@ -1909,6 +1911,7 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
 
              dadosPorMes[kNext].contas.push({
                  ...c,
+                 id: gerarId(),
                  valor: novoValor,
                  vencimento: gerarDataVencimento(nextA, nextM, dia),
                  pago: false,
@@ -2036,6 +2039,7 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
 
             // Normalização defensiva
             novas = (novas || []).map(n => ({
+                id: (n && n.id) ? String(n.id) : gerarId(),
                 conta: String(n.conta ?? "").trim(),
                 categoria: String(n.categoria ?? "").trim(),
                 tipo: String(n.tipo ?? "variavel").trim() || "variavel",
