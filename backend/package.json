@@ -1,6 +1,7 @@
 {
   "name": "controle-pagamentos-backend",
   "version": "1.0.0",
+  "engines": { "node": "22.x" },
   "description": "Backend simples para o dashboard de controle de pagamentos",
   "main": "server.js",
   "scripts": {
