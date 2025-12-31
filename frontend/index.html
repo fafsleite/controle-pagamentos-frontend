@@ -1024,12 +1024,26 @@
       if(authToken) opts.headers["Authorization"] = "Bearer " + authToken;
 
       const res = await fetch(API_BASE_URL+path, opts);
-      if(!res.ok) {
-         try { const b = await res.json(); throw new Error(b.error||res.status); }
-         catch(e){ throw new Error(e.message||"Erro API"); }
-      }
+
+      // Lê o corpo (quando possível) para obter { error, code } e devolver mensagens melhores
+      let data = {};
       const type = res.headers.get("Content-Type")||"";
-      return type.includes("json") ? res.json() : res.text();
+      if (type.includes("json")) {
+        try { data = await res.json(); } catch { data = {}; }
+      } else {
+        try { data = { error: await res.text() }; } catch { data = {}; }
+      }
+
+      if(!res.ok) {
+        const err = new Error(data.error || `HTTP ${res.status}`);
+        err.status = res.status;
+        err.code = data.code;
+        err.data = data;
+        throw err;
+      }
+
+      // Sucesso: se era JSON já foi lido acima
+      return type.includes("json") ? data : (data.error ?? "");
     }
 
     // ========= TEMA =========
@@ -2252,9 +2266,18 @@
 
             iniciar();
         } catch(err) {
-            document.getElementById("loginErro").innerText = err.message;
+            const el = document.getElementById("loginErro");
+            const msg = (err && err.data && err.data.error) ? err.data.error : (err && err.message ? err.message : "Falha no login");
+
+            // 🔒 Cadeado dourado: reset forçado do admin no backend
+            if (err && err.code === "ADMIN_PASSWORD_RESET_REQUIRED") {
+              el.innerText = msg + "\n\nPassos:\n1) No Render, mude FORCE_ADMIN_PASSWORD_RESET para 0\n2) Faça um novo Deploy\n3) Tente logar novamente";
+              return;
+            }
+
+            el.innerText = msg;
         }
-    }
+}
 
     const tk = localStorage.getItem(AUTH_TOKEN_KEY);
     if(tk) {
