@@ -25,6 +25,9 @@ const DB_PATH = process.env.DB_PATH
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || "flavioleiteconsultoria@gmail.com").trim().toLowerCase();
+const FORCE_ADMIN_PASSWORD_RESET = String(process.env.FORCE_ADMIN_PASSWORD_RESET || "0") === "1";
+
+
 
 const app = express();
 app.use(cors());
@@ -139,8 +142,18 @@ app.post("/api/login", async (req, res) => {
 
   if (!email || !password) return res.status(400).json({ error: "Informe e-mail e senha" });
 
+  // Cadeado dourado: quando a flag estiver ligada, não confundir com "senha inválida"
+  if (FORCE_ADMIN_PASSWORD_RESET && email === ADMIN_EMAIL) {
+    return res.status(403).json({
+      error: "Troca de senha obrigatória para o admin (FORCE_ADMIN_PASSWORD_RESET=1). Depois que trocar, volte a variável para 0.",
+      code: "ADMIN_PASSWORD_RESET_REQUIRED",
+    });
+  }
+
+
   const db = readDb();
   let user = db.users.find(u => u.email === email);
+
 
   // cria no primeiro login
   if (!user) {
@@ -186,6 +199,8 @@ app.post("/api/login", async (req, res) => {
       user.role = (String(user.role || "USER").toUpperCase() === "ADMIN") ? "ADMIN" : "USER";
     }
   }
+
+
 
   const token = signToken(user);
   return res.json({
@@ -407,4 +422,5 @@ app.listen(PORT, () => {
   console.log("API on", PORT);
   console.log("DB:", DB_PATH);
   console.log("ADMIN_EMAIL:", ADMIN_EMAIL);
+  console.log("FORCE_ADMIN_PASSWORD_RESET:", FORCE_ADMIN_PASSWORD_RESET ? "1" : "0");
 });
