@@ -382,13 +382,25 @@ app.put("/api/admin/users/:email/password", auth, adminOnly, async (req, res) =>
 
 // ---------- Static frontend ----------
 const FRONT_DIR = path.join(__dirname, "frontend");
-if (fs.existsSync(FRONT_DIR)) {
-  app.use(express.static(FRONT_DIR));
-  app.get("/", (req, res) => res.sendFile(path.join(FRONT_DIR, "index.html")));
-  app.get("/index.html", (req, res) => res.sendFile(path.join(FRONT_DIR, "index.html")));
+// ===== Servir Frontend (se existir) - evita ENOENT =====
+const FRONT_CANDIDATES = [
+  path.join(__dirname, "frontend", "dist"),  // Vite
+  path.join(__dirname, "frontend", "build"), // CRA
+  path.join(__dirname, "frontend"),          // fallback (só se tiver index.html aqui)
+];
+
+const FRONT_DIR_OK = FRONT_CANDIDATES.find((dir) =>
+  fs.existsSync(path.join(dir, "index.html"))
+);
+
+if (FRONT_DIR_OK) {
+  app.use(express.static(FRONT_DIR_OK));
+  app.get(["/", "/index.html"], (req, res) =>
+    res.sendFile(path.join(FRONT_DIR_OK, "index.html"))
+  );
 } else {
-  console.warn("Pasta ./frontend não encontrada. Crie 'frontend/index.html' para servir a interface.");
-  app.get("/", (req, res) => res.send("Frontend não encontrado. Crie a pasta ./frontend com index.html"));
+  console.warn("Frontend não encontrado. Esperado em frontend/dist ou frontend/build.");
+  app.get("/", (req, res) => res.send("API online (frontend não encontrado)"));
 }
 
 app.listen(PORT, () => {
