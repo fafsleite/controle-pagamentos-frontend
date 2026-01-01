@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Controle de Pagamentos</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <style>
+    <meta name="theme-color" content="#020617" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+<style>
     :root {
       --body-bg: radial-gradient(circle at top, #1d1b4c 0, #020617 50%, #020617 100%);
       --bg-soft: #111827;
@@ -474,7 +476,173 @@
     #resumoPorCategoriaWrap table, #resumoStatusWrap table { margin: 0; box-shadow: none; }
     #resumoPorCategoriaWrap { border-radius: 10px; }
 
-  </style>
+  
+    /* === MOBILE (<=768px) === */
+    @media (max-width: 768px) {
+
+      /* Evita cortes horizontais */
+      body {
+        margin: 10px auto;
+        padding: 0 10px 28px;
+        max-width: 100%;
+      }
+
+      /* Botões fixos (Tema / Senha / Sair): vira “barra” que cabe na tela */
+      .controls-wrapper {
+        position: sticky;       /* não fica escondido pelo topo e não invade conteúdo */
+        top: 8px;
+        right: auto;
+        left: 0;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 0 10px 0;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(2, 6, 23, 0.55);
+        border: 1px solid rgba(255,255,255,0.10);
+        backdrop-filter: blur(8px);
+        z-index: 9999;
+      }
+
+      .controls-btn {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+        font-size: 0.9rem;
+      }
+
+      /* Cabeçalho */
+      .header-wrapper {
+        align-items: stretch;
+        margin-bottom: 12px;
+      }
+
+      .header-main {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .header-logo {
+        width: 36px;
+        height: 36px;
+      }
+
+      h1 {
+        font-size: 40px;
+        line-height: 1.1;
+        text-align: center;
+      }
+
+      .info-bar-row {
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .subtitulo-badge {
+        width: 100%;
+        max-width: 520px;
+        text-align: center;
+        padding: 10px 14px;
+      }
+
+      /* Navegação (abas) */
+      .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .top-bar-left {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .tab-btn {
+        flex: 1 1 calc(50% - 10px);
+        min-width: 140px;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+      }
+
+      .top-bar-right {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      /* Toolbar (filtros/ordenação/bancos) */
+      .toolbar-unified {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .divider-vertical {
+        display: none;
+      }
+
+      .toolbar-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .toolbar-group label {
+        width: 100%;
+        max-width: 520px;
+      }
+
+      .toolbar-group input,
+      .toolbar-group select,
+      .toolbar-group button {
+        width: 100%;
+        max-width: 520px;
+        min-width: 0;
+      }
+
+      /* Cartões (Resumo) */
+      .resumo {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .card {
+        flex: 1 1 auto;
+      }
+
+      /* Tabelas: vira “arrasta pro lado” em telas pequenas */
+      .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 14px;
+      }
+      .table-scroll table {
+        min-width: 780px;
+      }
+      #tabelaPagamentos th,
+      #tabelaPagamentos td {
+        white-space: nowrap;
+      }
+
+      /* Gráficos */
+      canvas {
+        max-width: 100%;
+        height: auto !important;
+      }
+    }
+    
+</style>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -604,7 +772,8 @@
           </thead>
           <tbody id="adminUsersTbody"></tbody>
         </table>
-      </div>
+</div>
+</div>
       <!-- /ADMIN - Usuários -->
 
       <div class="atalhos-secoes">
@@ -1024,26 +1193,12 @@
       if(authToken) opts.headers["Authorization"] = "Bearer " + authToken;
 
       const res = await fetch(API_BASE_URL+path, opts);
-
-      // Lê o corpo (quando possível) para obter { error, code } e devolver mensagens melhores
-      let data = {};
-      const type = res.headers.get("Content-Type")||"";
-      if (type.includes("json")) {
-        try { data = await res.json(); } catch { data = {}; }
-      } else {
-        try { data = { error: await res.text() }; } catch { data = {}; }
-      }
-
       if(!res.ok) {
-        const err = new Error(data.error || `HTTP ${res.status}`);
-        err.status = res.status;
-        err.code = data.code;
-        err.data = data;
-        throw err;
+         try { const b = await res.json(); throw new Error(b.error||res.status); }
+         catch(e){ throw new Error(e.message||"Erro API"); }
       }
-
-      // Sucesso: se era JSON já foi lido acima
-      return type.includes("json") ? data : (data.error ?? "");
+      const type = res.headers.get("Content-Type")||"";
+      return type.includes("json") ? res.json() : res.text();
     }
 
     // ========= TEMA =========
@@ -2266,18 +2421,9 @@
 
             iniciar();
         } catch(err) {
-            const el = document.getElementById("loginErro");
-            const msg = (err && err.data && err.data.error) ? err.data.error : (err && err.message ? err.message : "Falha no login");
-
-            // 🔒 Cadeado dourado: reset forçado do admin no backend
-            if (err && err.code === "ADMIN_PASSWORD_RESET_REQUIRED") {
-              el.innerText = msg + "\n\nPassos:\n1) No Render, mude FORCE_ADMIN_PASSWORD_RESET para 0\n2) Faça um novo Deploy\n3) Tente logar novamente";
-              return;
-            }
-
-            el.innerText = msg;
+            document.getElementById("loginErro").innerText = err.message;
         }
-}
+    }
 
     const tk = localStorage.getItem(AUTH_TOKEN_KEY);
     if(tk) {
@@ -2582,5 +2728,15 @@
     }
 
   </script>
+
+<script>
+  // PWA (cache básico) - funciona em HTTPS (Vercel) e localhost
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
+</script>
+
 </body>
 </html>
