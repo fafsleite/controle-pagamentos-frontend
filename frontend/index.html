@@ -289,6 +289,7 @@
     .logout-btn:hover { background: #dc2626; }
 
     /* --- LOGIN --- */
+    
     .login-container {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: var(--body-bg); z-index: 2000;
@@ -2108,28 +2109,51 @@ const ctxC = document.getElementById("graficoPorCategoria").getContext("2d");
     ["loginEmail", "loginSenha"].forEach(id => document.getElementById(id).addEventListener("keyup", (e) => { if(e.key==="Enter") logar(); }));
 
     async function logar() {
-        const e = document.getElementById("loginEmail").value;
-        const p = document.getElementById("loginSenha").value;
-        if(!e || !p) return;
-        try {
-            const r = await apiFetch("/api/login", {method:"POST", body:JSON.stringify({email:e, password:p})});
-            authToken = r.token; userEmail = r.user.email;
-            bancos = r.user.bancos || []; categorias = r.user.categorias || [];
-            localStorage.setItem(AUTH_TOKEN_KEY, authToken);
-            iniciar();
-        } catch(err) { document.getElementById("loginErro").innerText = err.message; }
+    const e = document.getElementById("loginEmail").value;
+    const p = document.getElementById("loginSenha").value;
+    if (!e || !p) return;
+
+    try {
+        const r = await apiFetch("/api/login", {
+            method: "POST",
+            body: JSON.stringify({ email: e, password: p })
+        });
+
+        authToken = r.token;
+        window.currentUser = r.user || {};
+        userEmail = window.currentUser.email || "";
+        bancos = window.currentUser.bancos || [];
+        categorias = window.currentUser.categorias || [];
+
+        localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+
+        iniciar();
+        aplicarPermissoesAdmin();
+    } catch (err) {
+        document.getElementById("loginErro").innerText = err.message;
     }
+}
 
     const tk = localStorage.getItem(AUTH_TOKEN_KEY);
-    if(tk) {
+    if (tk) {
         authToken = tk;
-        apiFetch("/api/me").then(u => {
-            userEmail = u.email; bancos = u.bancos||[]; categorias = u.categorias||[];
-            paletaAtual = u.paleta||"azul"; iniciar();
+        apiFetch("/api/me")
+        .then((resp) => {
+            const u = resp.user || {};
+            userEmail = u.email || "";
+            window.currentUser = u;
+            bancos = u.bancos || [];
+            categorias = u.categorias || [];
+            paletaAtual = u.paleta || "azul";
+            iniciar();
             aplicarTema("dark", paletaAtual);
-        }).catch(() => { document.getElementById("loginContainer").style.display="flex"; });
+            aplicarPermissoesAdmin();
+        })
+        .catch(() => {
+            document.getElementById("loginContainer").style.display = "flex";
+        });
     } else {
-        document.getElementById("loginContainer").style.display="flex";
+        document.getElementById("loginContainer").style.display = "flex";
     }
 
   </script>
